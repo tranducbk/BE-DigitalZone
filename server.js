@@ -12,7 +12,7 @@ const app = express();
 require('dotenv').config();
 
 const corsOptions = {
-    origin: ['http://localhost:3000'],  
+    origin: ['https://digitalzone20220120.web.app', 'http://localhost:3000'],  
     methods: ['GET', 'POST', 'DELETE', 'PATCH', 'PUT'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
