@@ -4,7 +4,7 @@ const UserModel = require('../models/userModel');
 
 // Tạo đơn hàng mới
 const createOrder = async (req, res) => {
-  const { userId, items, paymentMethod } = req.body;
+  const { userId, items, paymentMethod, paymentStatus } = req.body;
 
   console.log(req.body);
 
@@ -62,7 +62,7 @@ const createOrder = async (req, res) => {
       totalAmount,
       paymentMethod,
       orderStatus: 'Processing', // Đơn hàng đang được xử lý
-      paymentStatus: 'Completed'   // Trạng thái thanh toán là đang chờ xử lý
+      paymentStatus   // Trạng thái thanh toán là đang chờ xử lý
     });
 
     await newOrder.save();
@@ -129,8 +129,13 @@ const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    if (orderStatus) order.orderStatus = orderStatus;
-    if (paymentStatus) order.paymentStatus = paymentStatus;
+    if (orderStatus) { 
+      order.orderStatus = orderStatus;
+    }
+
+    if (paymentStatus) {
+      order.paymentStatus = paymentStatus;
+    }
 
     await order.save();
 
@@ -157,9 +162,6 @@ const deleteOrder = async (req, res) => {
     res.status(500).json({ message: 'Error deleting order', error: error.message });
   }
 };
-
-
-
 
 // Hủy đơn hàng
 const cancelOrder = async (req, res) => {

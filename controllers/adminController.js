@@ -299,7 +299,8 @@ const getAllOrders = async (req, res) => {
 // Chỉnh sửa trạng thái đơn hàng
 const updateOrderStatus = async (req, res) => {
   const { orderId, newStatus } = req.body;
-
+  console.log('Received request to update order admin status:', req.body);
+  // let paymentStatus;
   try {
     // Kiểm tra dữ liệu đầu vào
     if (!orderId || !newStatus) {
@@ -312,12 +313,20 @@ const updateOrderStatus = async (req, res) => {
       return res.status(400).json({ message: 'Invalid status value' });
     }
 
+    // if(newStatus === 'Delivered'){
+    //   paymentStatus = 'Completed';
+    // }
+
     // Cập nhật trạng thái đơn hàng
     const updatedOrder = await Order.findByIdAndUpdate(
       orderId, 
-      { orderStatus: newStatus }, 
+      {
+        orderStatus: newStatus,
+        paymentStatus: newStatus === 'Delivered' ? 'Completed' : paymentStatus,
+      },
       { new: true } // Trả về document sau khi đã cập nhật
     );
+    console.log('Updated order:', updatedOrder);
 
     if (!updatedOrder) {
       return res.status(404).json({ message: 'Order not found' });
