@@ -2,6 +2,7 @@ const { log } = require('console');
 const OrderModel = require('../models/orderModel');
 const ProductModel = require('../models/productModel');
 const UserModel = require('../models/userModel');
+const { removeOrderedItemsFromCart } = require('./cartController');
 
 // Tạo đơn hàng mới
 const createOrder = async (req, res) => {
@@ -94,6 +95,11 @@ const createOrder = async (req, res) => {
       }
     } 
     
+    await removeOrderedItemsFromCart(userId, items.map(i => ({
+        productId: i.productId,
+        variantColor: i.variant.color
+    })));
+
     res.status(201).json({ message: 'Order created successfully', order: newOrder });
   } catch (error) {
     console.error(error);

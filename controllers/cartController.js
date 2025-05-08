@@ -142,9 +142,24 @@ const getCart = async (req, res) => {
     }
 };
 
+const removeOrderedItemsFromCart = async (userId, orderedItems) => {
+    const cart = await CartModel.findOne({ userId });
+    if (!cart) return;
+
+    cart.items = cart.items.filter(item => {
+        return !orderedItems.some(ordered =>
+            item.productId.toString() === ordered.productId.toString() &&
+            item.variant.color.toString() === ordered.variantColor.toString()
+        );
+    });
+
+    await cart.save();
+};
+
 module.exports = {
     addProductToCart,
     updateProductQuantity,
     deleteProductFromCart,
-    getCart
+    getCart,
+    removeOrderedItemsFromCart
 };
