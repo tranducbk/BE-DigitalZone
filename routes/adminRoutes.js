@@ -13,7 +13,9 @@ const {
   deleteProduct,
   updateProduct,
   getAllOrders,
-  updateOrderStatus
+  updateOrderStatus,
+  getUserById,
+  updateUser
 } = require('../controllers/adminController');
 
 // Lấy thông tin tổng quan admin
@@ -31,6 +33,8 @@ router.patch('/change-password', protect, isAdmin, changeAdminPassword);
 // Quản lý người dùng
 router.get('/users', protect, isAdmin, manageUsers);
 router.delete('/users/:id', protect, isAdmin, deleteUser);
+router.get('/users/:id', protect, isAdmin, getUserById);
+router.put('/users/:id', protect, isAdmin, updateUser);
 
 // Quản lý sản phẩm
 router.get('/products', protect, isAdmin, manageProducts);

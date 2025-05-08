@@ -1,3 +1,4 @@
+const { log } = require('console');
 const OrderModel = require('../models/orderModel');
 const ProductModel = require('../models/productModel');
 const UserModel = require('../models/userModel');
@@ -62,7 +63,7 @@ const createOrder = async (req, res) => {
       totalAmount,
       paymentMethod,
       orderStatus: 'Processing', // Đơn hàng đang được xử lý
-      paymentStatus   // Trạng thái thanh toán là đang chờ xử lý
+      paymentStatus: 'Pending'   // Trạng thái thanh toán là đang chờ xử lý
     });
 
     await newOrder.save();
@@ -120,29 +121,21 @@ const getOrders = async (req, res) => {
 
 // Cập nhật trạng thái đơn hàng
 const updateOrderStatus = async (req, res) => {
-  const { orderId } = req.params;
-  const { orderStatus, paymentStatus } = req.body;
-
+  const { orderId, newStatus } = req.body;
+  if (!orderId || orderId.length !== 24) {
+    return res.status(400).json({ message: 'orderId không hợp lệ' });
+  }
   try {
     const order = await OrderModel.findById(orderId);
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
     }
-
-    if (orderStatus) { 
-      order.orderStatus = orderStatus;
-    }
-
-    if (paymentStatus) {
-      order.paymentStatus = paymentStatus;
-    }
-
+    order.orderStatus = newStatus;
     await order.save();
-
-    res.status(200).json({ message: 'Order status updated successfully', order });
+    res.status(200).json({ message: 'Cập nhật trạng thái đơn hàng thành công', order });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error updating order status', error: error.message });
+    console.error('Lỗi khi cập nhật trạng thái đơn hàng:', error);
+    res.status(500).json({ message: 'Lỗi khi cập nhật trạng thái đơn hàng', error: error.message });
   }
 };
 

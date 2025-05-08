@@ -300,7 +300,6 @@ const getAllOrders = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
   const { orderId, newStatus } = req.body;
   console.log('Received request to update order admin status:', req.body);
-  // let paymentStatus;
   try {
     // Kiểm tra dữ liệu đầu vào
     if (!orderId || !newStatus) {
@@ -313,16 +312,12 @@ const updateOrderStatus = async (req, res) => {
       return res.status(400).json({ message: 'Invalid status value' });
     }
 
-    // if(newStatus === 'Delivered'){
-    //   paymentStatus = 'Completed';
-    // }
-
     // Cập nhật trạng thái đơn hàng
     const updatedOrder = await Order.findByIdAndUpdate(
       orderId, 
       {
         orderStatus: newStatus,
-        paymentStatus: newStatus === 'Delivered' ? 'Completed' : paymentStatus,
+        paymentStatus: newStatus === 'Delivered' ? 'Completed' : 'Pending'
       },
       { new: true } // Trả về document sau khi đã cập nhật
     );
@@ -339,6 +334,74 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
+// Lấy thông tin user theo ID (chỉ cho admin)
+const getUserById = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const user = await User.findById(userId).select('-password');
+        if (!user) {
+            return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+        }
+        res.status(200).json({ success: true, user });
+    } catch (error) {
+        console.error('Lỗi khi lấy thông tin người dùng:', error);
+        res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+    }
+};
 
+// Cập nhật thông tin user (chỉ cho admin)
+const updateUser = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const { userName, email, phoneNumber, role, diaChi } = req.body;
+        // Kiểm tra email và số điện thoại đã tồn tại chưa
+        if (email) {
+            const existingEmail = await User.findOne({ email, _id: { $ne: userId } });
+            if (existingEmail) {
+                return res.status(400).json({ message: 'Email đã được sử dụng' });
+            }
+        }
+        if (phoneNumber) {
+            const existingPhone = await User.findOne({ phoneNumber, _id: { $ne: userId } });
+            if (existingPhone) {
+                return res.status(400).json({ message: 'Số điện thoại đã được sử dụng' });
+            }
+        }
+        // Cập nhật thông tin người dùng
+        const updateData = {};
+        if (userName) updateData.userName = userName;
+        if (email) updateData.email = email;
+        if (phoneNumber) updateData.phoneNumber = phoneNumber;
+        if (role) updateData.role = role;
+        if (diaChi) updateData.diaChi = diaChi;
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            updateData,
+            { new: true }
+        ).select('-password');
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+        }
+        res.status(200).json({ success: true, message: 'Cập nhật thông tin thành công', user: updatedUser });
+    } catch (error) {
+        console.error('Lỗi khi cập nhật thông tin người dùng:', error);
+        res.status(500).json({ success: false, message: 'Lỗi máy chủ' });
+    }
+};
 
-module.exports = { getAdminDashboard, getAdminProfile, updateAdminProfile, changeAdminPassword, manageUsers, manageProducts, deleteUser, createProduct, deleteProduct, updateProduct, getAllOrders, updateOrderStatus };
+module.exports = {
+  getAdminDashboard,
+  getAdminProfile,
+  updateAdminProfile,
+  changeAdminPassword,
+  manageUsers,
+  manageProducts,
+  deleteUser,
+  createProduct,
+  deleteProduct,
+  updateProduct,
+  getAllOrders,
+  updateOrderStatus,
+  getUserById,
+  updateUser
+};

@@ -2,6 +2,7 @@ const ProductModel = require('../models/productModel');
 const { validateProduct } = require('../validation/product');
 const Comment = require('../models/commentModel');
 const Rating = require('../models/ratingModel');
+const { log } = require('console');
 
 // Example route to create a new product
 const createProduct = async (req, res) => {
@@ -70,11 +71,6 @@ const getProductById = async (req, res) => {
 const addReview = async (req, res) => {
   const { productId, userId, stars, text } = req.body;
 
-  //console.log(productId);
-  //console.log(userId);
-  //console.log(stars);
-  //console.log(text);
-
   if (!productId || !userId || !stars || stars < 1 || stars > 5) {
     return res.status(400).json({ message: "All fields are required, and 'stars' must be between 1 and 5." });
   }
@@ -85,7 +81,6 @@ const addReview = async (req, res) => {
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
-
 
     // Add the review
     product.reviews.set(userId, stars, text);
@@ -114,7 +109,6 @@ const addReview = async (req, res) => {
     res.status(500).json({ message: "Error adding review", error: err.message });
   }
 };
-
 
 const getComments = async (req, res) => {
   const { productId } = req.params;
@@ -162,5 +156,345 @@ const getRelatedProducts = async (req, res) => {
   }
 };
 
+// Lấy tất cả loại sản phẩm (category)
+const getAllCategories = async (req, res) => {
+  try {
+    const products = await ProductModel.find({}, 'category');
+    const categories = await ProductModel.distinct('category');
 
-module.exports = {createProduct, getProducts, getProductById, addReview, getComments, getRelatedProducts };
+    // Lọc bỏ các giá trị null, undefined hoặc chuỗi rỗng
+    const validCategories = categories.filter(category => {
+      const isValid = category && category.trim() !== '';
+      return isValid;
+    });
+    // Sắp xếp danh mục theo thứ tự alphabet
+    const sortedCategories = validCategories.sort();
+    // Kiểm tra xem đã lấy danh sách category chưa
+    if (sortedCategories.length === 0) {
+      return res.status(404).json({
+        message: 'Không có danh mục nào được tìm thấy'
+      });
+    }
+
+    res.status(200).json({ 
+      message: 'Danh sách loại sản phẩm được lấy thành công',
+      categories: sortedCategories
+    });
+  } catch (error) {
+    console.error('Lỗi chi tiết khi lấy danh sách loại sản phẩm:', error);
+    res.status(500).json({ 
+      message: 'Lỗi khi lấy danh sách loại sản phẩm',
+      error: error.message 
+    });
+  }
+};
+
+// Lấy tất cả thương hiệu (brands)
+const getAllBrands = async (req, res) => {
+  try {
+    
+    // Lấy tất cả sản phẩm để kiểm tra cấu trúc dữ liệu
+    const products = await ProductModel.find({}, 'brand');
+    // Lấy danh sách các brand duy nhất
+    const brands = await ProductModel.aggregate([
+      { $group: { _id: "$brand.name", image: { $first: "$brand.image" } } },
+      { $project: { _id: 0, name: "$_id", image: 1 } },
+      { $sort: { name: 1 } }
+    ]);
+
+    // Kiểm tra xem đã lấy danh sách brand chưa
+    if (brands.length === 0) {
+      console.log('Không tìm thấy thương hiệu nào');
+      return res.status(404).json({
+        message: 'Không có thương hiệu nào được tìm thấy'
+      });
+    }
+
+    res.status(200).json({ 
+      message: 'Danh sách thương hiệu được lấy thành công',
+      brands: brands
+    });
+  } catch (error) {
+    console.error('Lỗi chi tiết khi lấy danh sách thương hiệu:', error);
+    res.status(500).json({ 
+      message: 'Lỗi khi lấy danh sách thương hiệu',
+      error: error.message 
+    });
+  }
+};
+
+// Thêm thương hiệu mới
+const addBrand = async (req, res) => {
+  const { brandName, logoUrl } = req.body;
+
+  if (!brandName) {
+    return res.status(400).json({
+      message: 'Tên thương hiệu là bắt buộc'
+    });
+  }
+
+  try {
+    // Kiểm tra xem brand đã tồn tại chưa
+    const existingBrand = await ProductModel.findOne({ brand: brandName });
+    if (existingBrand) {
+      return res.status(400).json({
+        message: 'Thương hiệu này đã tồn tại'
+      });
+    }
+
+    // Tạo một sản phẩm mẫu với brand mới
+    const newProduct = new ProductModel({
+      brand: brandName,
+      name: 'Mẫu sản phẩm',
+      price: 0,
+      description: 'Sản phẩm mẫu cho thương hiệu mới',
+      category: 'Chưa phân loại',
+      imageUrl: logoUrl || ''
+    });
+
+    await newProduct.save();
+
+    res.status(201).json({
+      message: 'Thêm thương hiệu mới thành công',
+      brand: {
+        brandId: newProduct._id,
+        brandName: brandName,
+        logoUrl: logoUrl
+      }
+    });
+  } catch (error) {
+    console.error('Lỗi khi thêm thương hiệu mới:', error);
+    res.status(500).json({
+      message: 'Lỗi khi thêm thương hiệu mới',
+      error: error.message
+    });
+  }
+};
+
+// Cập nhật thương hiệu
+const updateBrand = async (req, res) => {
+  const { brandId } = req.params;
+  const { brandName, logoUrl } = req.body;
+
+  if (!brandName) {
+    return res.status(400).json({
+      message: 'Tên thương hiệu là bắt buộc'
+    });
+  }
+
+  try {
+    const product = await ProductModel.findById(brandId);
+    if (!product) {
+      return res.status(404).json({
+        message: 'Không tìm thấy thương hiệu'
+      });
+    }
+
+    // Kiểm tra xem tên mới có bị trùng không
+    if (brandName !== product.brand) {
+      const existingBrand = await ProductModel.findOne({ brand: brandName });
+      if (existingBrand) {
+        return res.status(400).json({
+          message: 'Tên thương hiệu này đã tồn tại'
+        });
+      }
+    }
+
+    product.brand = brandName;
+    if (logoUrl) {
+      product.imageUrl = logoUrl;
+    }
+
+    await product.save();
+
+    res.status(200).json({
+      message: 'Cập nhật thương hiệu thành công',
+      brand: {
+        brandId: product._id,
+        brandName: product.brand,
+        logoUrl: product.imageUrl
+      }
+    });
+  } catch (error) {
+    console.error('Lỗi khi cập nhật thương hiệu:', error);
+    res.status(500).json({
+      message: 'Lỗi khi cập nhật thương hiệu',
+      error: error.message
+    });
+  }
+};
+
+// Xóa thương hiệu
+const deleteBrand = async (req, res) => {
+  const { brandId } = req.params;
+
+  try {
+    const product = await ProductModel.findById(brandId);
+    if (!product) {
+      return res.status(404).json({
+        message: 'Không tìm thấy thương hiệu'
+      });
+    }
+
+    await ProductModel.deleteOne({ _id: brandId });
+
+    res.status(200).json({
+      message: 'Xóa thương hiệu thành công'
+    });
+  } catch (error) {
+    console.error('Lỗi khi xóa thương hiệu:', error);
+    res.status(500).json({
+      message: 'Lỗi khi xóa thương hiệu',
+      error: error.message
+    });
+  }
+};
+
+// Thêm danh mục mới
+const addCategory = async (req, res) => {
+  const { categoryName, imageUrl, description } = req.body;
+
+  if (!categoryName) {
+    return res.status(400).json({
+      message: 'Tên danh mục là bắt buộc'
+    });
+  }
+
+  try {
+    // Kiểm tra xem category đã tồn tại chưa
+    const existingCategory = await ProductModel.findOne({ category: categoryName });
+    if (existingCategory) {
+      return res.status(400).json({
+        message: 'Danh mục này đã tồn tại'
+      });
+    }
+
+    // Tạo một sản phẩm mẫu với category mới
+    const newProduct = new ProductModel({
+      category: categoryName,
+      name: 'Mẫu sản phẩm',
+      price: 0,
+      description: description || 'Sản phẩm mẫu cho danh mục mới',
+      brand: 'Chưa phân loại',
+      imageUrl: imageUrl || ''
+    });
+
+    await newProduct.save();
+
+    res.status(201).json({
+      message: 'Thêm danh mục mới thành công',
+      category: {
+        categoryId: newProduct._id,
+        categoryName: categoryName,
+        imageUrl: imageUrl,
+        description: description
+      }
+    });
+  } catch (error) {
+    console.error('Lỗi khi thêm danh mục mới:', error);
+    res.status(500).json({
+      message: 'Lỗi khi thêm danh mục mới',
+      error: error.message
+    });
+  }
+};
+
+// Cập nhật danh mục
+const updateCategory = async (req, res) => {
+  const { categoryId } = req.params;
+  const { categoryName, imageUrl, description } = req.body;
+
+  if (!categoryName) {
+    return res.status(400).json({
+      message: 'Tên danh mục là bắt buộc'
+    });
+  }
+
+  try {
+    const product = await ProductModel.findById(categoryId);
+    if (!product) {
+      return res.status(404).json({
+        message: 'Không tìm thấy danh mục'
+      });
+    }
+
+    // Kiểm tra xem tên mới có bị trùng không
+    if (categoryName !== product.category) {
+      const existingCategory = await ProductModel.findOne({ category: categoryName });
+      if (existingCategory) {
+        return res.status(400).json({
+          message: 'Tên danh mục này đã tồn tại'
+        });
+      }
+    }
+
+    product.category = categoryName;
+    if (imageUrl) {
+      product.imageUrl = imageUrl;
+    }
+    if (description) {
+      product.description = description;
+    }
+
+    await product.save();
+
+    res.status(200).json({
+      message: 'Cập nhật danh mục thành công',
+      category: {
+        categoryId: product._id,
+        categoryName: product.category,
+        imageUrl: product.imageUrl,
+        description: product.description
+      }
+    });
+  } catch (error) {
+    console.error('Lỗi khi cập nhật danh mục:', error);
+    res.status(500).json({
+      message: 'Lỗi khi cập nhật danh mục',
+      error: error.message
+    });
+  }
+};
+
+// Xóa danh mục
+const deleteCategory = async (req, res) => {
+  const { categoryId } = req.params;
+
+  try {
+    const product = await ProductModel.findById(categoryId);
+    if (!product) {
+      return res.status(404).json({
+        message: 'Không tìm thấy danh mục'
+      });
+    }
+
+    await ProductModel.deleteOne({ _id: categoryId });
+
+    res.status(200).json({
+      message: 'Xóa danh mục thành công'
+    });
+  } catch (error) {
+    console.error('Lỗi khi xóa danh mục:', error);
+    res.status(500).json({
+      message: 'Lỗi khi xóa danh mục',
+      error: error.message
+    });
+  }
+};
+
+module.exports = {
+  createProduct, 
+  getProducts, 
+  getProductById, 
+  addReview, 
+  getComments, 
+  getRelatedProducts, 
+  getAllCategories,
+  getAllBrands,
+  addBrand,
+  updateBrand,
+  deleteBrand,
+  addCategory,
+  updateCategory,
+  deleteCategory
+};

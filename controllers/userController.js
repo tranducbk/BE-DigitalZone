@@ -183,18 +183,18 @@ exports.loginUser = async (req, res) => {
     }
 };
 
-exports.registerGoogle = async (req, res) => {
-    const { tokenGoogle, userName, email } = req.body;
-    console.log('Received Google login request:', req.body);
+exports.loginGoogle = async (req, res) => {
+    const { email, userName } = req.body;
     try {
-        // Kiểm tra xem người dùng đã tồn tại chưa
+        // Tìm user theo email
         let user = await User.findOne({ email });
+
         if (!user) {
-            // Nếu người dùng chưa tồn tại, tạo người dùng mới
+            // Nếu chưa có, tạo mới user
             user = new User({
                 email,
                 userName,
-                password: tokenGoogle,
+                password: 'google_oauth', // Đảm bảo không rỗng!
                 phoneNumber: '',
                 diaChi: {
                     city: 'Tỉnh/Thành phố',
@@ -202,59 +202,27 @@ exports.registerGoogle = async (req, res) => {
                     ward: 'Phường/xã'
                 }
             });
-            console.log(user);
-            
-            
-            // Lưu người dùng vào cơ sở dữ liệu
             await user.save();
         }
-        else {
-            return res.status(200).json({
-                success: false, 
-                message: 'Người dùng đã tồn tại!'
-            });
-        }
-        // Trả về thông tin người dùng và token
-        res.status(200).json({
-            success: true,
-            message: 'Đăng kí thành công! Đang chuyển hướng sang đăng nhập',
-            user  // Trả về thông tin người dùng
-        });
-    } catch (error) {
-        console.error('Error saving user:', error);
-        res.status(500).json({ success: false, message: 'Server error' });
-    }
-}
 
-exports.loginGoogle = async (req, res) => {
-    const { tokenGoogle, email } = req.body;
-    console.log('Received Google login request:', req.body);
-    try {
-        // Kiểm tra xem người dùng đã tồn tại chưa
-        let user = await User.findOne({ email });
-        console.log('User found:', user);
-        if (!user) {
-            console.log('User not found');
-            return res.status(200).json({ success: false, message: 'User not found' });
-        }
-
-        if (!tokenGoogle) {
-            console.log('Invalid password');
-            return res.status(200).json({ success: false, message: 'Invalid password' });
-        }
+        // Tạo token cho user
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1002h' });
-        console.log('Đăng nhập thành công! ', user.userName, token );
-        
-        // Trả về thông tin người dùng và token
+
+        // Trả về thông tin user và token
         res.status(200).json({
             success: true,
             message: 'Đăng nhập thành công!',
-            token,  // Trả về token
-            user,  // Trả về thông tin người dùng
+            token,
+            user: {
+                _id: user._id,
+                userName: user.userName,
+                email: user.email,
+                phoneNumber: user.phoneNumber,
+                role: user.role
+            }
         });
     } catch (error) {
-        console.error('Error saving user:', error);
+        console.error('Error during Google login:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
-
 }

@@ -1,5 +1,5 @@
 const express = require('express');
-const { registerUser, loginUser, registerGoogle, loginGoogle, getProfile, updateProfile, changePassword } = require('../controllers/userController');
+const { registerUser, loginUser, loginGoogle, getProfile, updateProfile, changePassword, deleteUser, updateUser, getUserById } = require('../controllers/userController');
 const authMiddleware = require('../middlewares/userMiddleware');
 
 const router = express.Router();
@@ -9,9 +9,6 @@ router.post('/register', registerUser);
 
 // Đăng nhập người dùng
 router.post('/login', loginUser);
-
-// Đăng ký bằng Google
-router.post('/register-google', registerGoogle);
 
 // Đăng nhập bằng Google
 router.post('/login-google', loginGoogle);
