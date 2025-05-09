@@ -161,7 +161,8 @@ exports.loginUser = async (req, res) => {
     const { phoneNumber, password } = req.body;
 
     try {
-        const user = await User.findOne({ phoneNumber });
+        // Tìm user và lấy đầy đủ thông tin
+        const user = await User.findOne({ phoneNumber }).select('+password');
         if (!user) {
             console.log('User not found');
             return res.status(200).json({ success: false, message: 'User not found' });
@@ -173,9 +174,22 @@ exports.loginUser = async (req, res) => {
             return res.status(200).json({ success: false, message: 'Invalid password' });
         }
 
+        // Tạo token với thông tin user
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1002h' });
-        res.json({ success: true, token, userName: user.userName, role: user.role, phoneNumber:user.phoneNumber, userID: user._id });
-        console.log('Đăng nhập thành công! ', user.userName, token );
+        
+        // Trả về đầy đủ thông tin cần thiết
+        res.json({ 
+            success: true, 
+            token, 
+            userName: user.userName, 
+            role: user.role, 
+            phoneNumber: user.phoneNumber, 
+            userID: user._id,
+            email: user.email,
+            diaChi: user.diaChi
+        });
+        
+        console.log('Đăng nhập thành công! ', user.userName, token);
 
     } catch (error) {
         console.error('Error during login:', error);
