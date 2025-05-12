@@ -18,4 +18,10 @@ router.delete('/:orderId', OrderController.deleteOrder);
 // Hủy đơn hàng
 router.patch('/:orderId', authMiddleware, OrderController.cancelOrder);
 
+// Route thanh toán VNPAY
+router.post('/vnpay/create-payment', OrderController.vnpayPayment);
+
+// Route xử lý kết quả trả về từ VNPAY
+router.get('/vnpay-return', OrderController.vnpayReturn);
+
 module.exports = router;
