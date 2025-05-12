@@ -84,7 +84,7 @@ const createOrder = async (req, res) => {
       totalAmount,
       paymentMethod,
       orderStatus: 'Processing', // Đơn hàng đang được xử lý
-      paymentStatus: 'Pending'   // Trạng thái thanh toán là đang chờ xử lý
+      paymentStatus,  // Trạng thái thanh toán là đang chờ xử lý
     });
 
     await newOrder.save();
