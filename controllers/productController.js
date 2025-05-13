@@ -67,44 +67,39 @@ const getProductById = async (req, res) => {
   }
 };
 
-// Add a review (rating)
 const addReview = async (req, res) => {
-  const { productId, userId, stars, text } = req.body;
+  const { productId, userId, rating, text } = req.body;
 
-  if (!productId || !userId || !stars || stars < 1 || stars > 5) {
-    return res.status(400).json({ message: "All fields are required, and 'stars' must be between 1 and 5." });
+  if (!productId || !userId || !rating || rating < 1 || rating > 5) {
+    return res.status(400).json({ message: "All fields are required, and 'rating' must be between 1 and 5." });
   }
 
   try {
-    const product = await ProductModel.findById(productId);
+    // 1. Lưu review mới
+    await Comment.create({ productId, userId, rating, text });
 
-    if (!product) {
-      return res.status(404).json({ message: "Product not found" });
-    }
+    // 2. Lấy tất cả review của sản phẩm này
+    const comments = await Comment.find({ productId });
 
-    // Add the review
-    product.reviews.set(userId, stars, text);
+    // 3. Tính lại số lượng từng mức sao và rating trung bình
+    let star1 = 0, star2 = 0, star3 = 0, star4 = 0, star5 = 0, sum = 0;
+    comments.forEach(c => {
+      sum += c.rating;
+      if (c.rating === 1) star1++;
+      if (c.rating === 2) star2++;
+      if (c.rating === 3) star3++;
+      if (c.rating === 4) star4++;
+      if (c.rating === 5) star5++;
+    });
+    const avg = comments.length > 0 ? (sum / comments.length) : 0;
 
-    // Update the star-level count
-    if (stars === 1) product.star1++;
-    if (stars === 2) product.star2++;
-    if (stars === 3) product.star3++;
-    if (stars === 4) product.star4++;
-    if (stars === 5) product.star5++;
+    // 4. Cập nhật lại sản phẩm
+    await ProductModel.findByIdAndUpdate(productId, {
+      rating: avg,
+      star1, star2, star3, star4, star5
+    });
 
-    // Recalculate the average rating
-    const totalReviews = product.star1 + product.star2 + product.star3 + product.star4 + product.star5;
-
-    if (totalReviews === 0) {
-      product.rating = 0; // Default to 0 if there are no reviews
-    } else {
-      const totalStars = product.star1 * 1 + product.star2 * 2 + product.star3 * 3 + product.star4 * 4 + product.star5 * 5;
-      product.rating = totalStars / totalReviews;
-    }
-
-    await product.save();
-
-    res.status(200).json({ message: "Review added successfully", product });
+    res.status(200).json({ message: "Review added successfully" });
   } catch (err) {
     res.status(500).json({ message: "Error adding review", error: err.message });
   }

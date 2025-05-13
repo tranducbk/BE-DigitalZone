@@ -170,8 +170,8 @@ exports.loginUser = async (req, res) => {
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            console.log('Invalid password');
-            return res.status(200).json({ success: false, message: 'Invalid password' });
+            console.log('Sai mật khẩu! Vui lòng thử lại');
+            return res.status(200).json({ success: false, message: 'Sai mật khẩu! Vui lòng thử lại' });
         }
 
         // Tạo token với thông tin user
